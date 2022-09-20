@@ -6,156 +6,16 @@ and a couple of WS2812B strips to light up the stove top and
 the oven area.
 */
 
-#include <DFRobotDFPlayerMini.h>
-#include <FastLED.h>
-#include <ez_switch_lib.h>
-
-// ----------------------------------------------- \\
-
-// MP3 definitions 
-DFRobotDFPlayerMini MP3;
-void printDetail(uint8_t type, int value);
-int sound_mode = 0;
-// 0 - colors;
-// 1 - sound effects
-// 2 -
-
-int Lang=1; // 1 Eng; 2 Spa  ** must match folders in the SD card **
-#define MAX_LANGUAGES 2
-
-// ----------------------------------------------- \\
-
-// Button definitions
-const unsigned int btnPinR = 26;
-const unsigned int ledPinR = 25;
-
-const unsigned int btnPinG = 32;
-const unsigned int ledPinG = 33;
-
-const unsigned int btnPinB = 14;
-const unsigned int ledPinB = 27;
-
-
-int     interrupt_pin =  23;  // external interrupt pin
-void IRAM_ATTR switch_ISR();
+#include "led_handling.h"
+#include "sound_handling.h"
+#include "button_handling.h"
 
 #define LED 2  // Onboard LED fpr esp32-vroom-32 board
-
-#define num_switches     3
-//
-// 'my_switches' layout.
-// one row of data for each switch to be configured, as follows:
-// [][0] = switch type
-// [][1] = digital pin connected to switch
-// [][2] = the switch_id provided by the add_switch function for the switch declared
-// [][3] = the circuit type connecting the switch, here the switches
-//         will have 10k ohm pull down resistors wired
-byte my_switches[num_switches][4] =
-{
-  button_switch,  26, 0, circuit_C2,
-  button_switch,  32, 0, circuit_C2,
-  button_switch,  14, 0, circuit_C2,
-};
-
-hw_timer_t *My_timer = NULL;
-void IRAM_ATTR onTimer();
-
-volatile int s[num_switches];
-volatile int t[num_switches];
-volatile bool read_buttons = 0;
-volatile bool timer_start_flag = 0;
-volatile bool timer_running_flag = 0;
-const long timer_length = 370000;
-
-// Create the 'Switches' instance (ms) for the given number of switches
-Switches ms(num_switches); 
-
-// ----------------------------------------------- \\
-
-// LED Strip config
-CRGB color_to_use = CRGB::Black;
-
-void leds_oven( void * data);
-void leds_stove( void * data);
-
-// How many leds in your strip(s) and which pin(s)?
-#define OVEN_NUM_LEDS 22
-#define OVEN_DATA_PIN 13
-
-#define STOVE_NUM_LEDS 2
-#define STOVE_DATA_PIN 12
-
-// Define the array of leds
-CRGB oven_leds[OVEN_NUM_LEDS];
-CRGB stove_leds[STOVE_NUM_LEDS];
-
-int MP3_is_playing(){
-  int i = MP3.readState()==513;
-  //Serial.println(i==0);
-  return ( i == 0);
-}
-
-void sayColor(int c, int w){
-  CRGB color_to_use = CRGB::Black;
-  switch(c){
-    case 1:
-      color_to_use=CRGB::Red;
-      break;
-    case 2:
-      color_to_use=CRGB::Green;
-      break;
-    case 3:
-      color_to_use=CRGB::Blue;
-      break;
-    case 4:
-      color_to_use=CRGB::Yellow;
-      break;
-    case 5:
-      color_to_use=CRGB::Cyan;
-      break;
-    case 6:
-      color_to_use=CRGB::Magenta;
-      break;
-    case 7:
-      color_to_use=CRGB::White;
-      break;
-  }
-  Serial.print(F("Setting Oven LEDs to "));
-  Serial.println(c);
-  xTaskCreate(
-    leds_oven,    // Function that should be called
-    "Light up the oven LEDs",  // Name of the task (for debugging)
-    1000,            // Stack size (bytes)
-    (void *) &color_to_use,            // Parameter to pass
-    1,               // Task priority
-    NULL             // Task handle
-  );
-
-  MP3.playFolder(Lang,c);
-  if(w>0){
-    while(MP3_is_playing()){}; // wait until playing is done
-  }
-}
-
-void nextLang(){
-  Lang+=1;
-  if(Lang>MAX_LANGUAGES){
-    Lang=1;
-  }
-  Serial.print(F("Switching language to "));
-  Serial.println(Lang);
-  MP3.playFolder(97,Lang);
-  //while(MP3_is_playing()){};
-}
 
 void setup() {
   Serial.begin(115200);
 
-  // Enable the LEDs on the switches
-  Serial.println("Setting up button LEDs");
-  pinMode(ledPinR,OUTPUT);
-  pinMode(ledPinG,OUTPUT);
-  pinMode(ledPinB,OUTPUT);
+  enable_button_leds();
 
   // Setup the MP3-TF-16p player
   Serial2.begin(9600, SERIAL_8N1);  //Serial2.begin(9600);
@@ -166,25 +26,17 @@ void setup() {
     Serial.println(F("ERROR")); 
     for(int i=10;i>0;i--){
       Serial.println(i);
-
-      analogWrite(ledPinR,128);
-      analogWrite(ledPinG,0);
-      analogWrite(ledPinB,0);     
+      button_led_set(128,0,0);
       delay(10+6*i);
 
-      analogWrite(ledPinR,0);
-      analogWrite(ledPinG,128);
-      analogWrite(ledPinB,0);
+      button_led_set(0,128,0);
       delay(10+6*i);
 
-      analogWrite(ledPinR,0);
-      analogWrite(ledPinG,0);
-      analogWrite(ledPinB,128);
+      button_led_set(0,0,128);
       delay(10+6*i);
     }
-    analogWrite(ledPinR,0);
-    analogWrite(ledPinG,0);
-    analogWrite(ledPinB,0);
+    button_led_set(0,0,0);
+
     ESP.restart();  // Have you tried turning it off and on again?
   }
 
@@ -217,6 +69,7 @@ void setup() {
       my_switches[sw][2], // switch id
       interrupt_pin,      // digital pin to link to for interrupt
       LOW);               // start with interrupt pin LOW, as interrupt will be triggered on RISING
+    // pinMode(my_switches[sw][3],OUTPUT);
   }
   // Now establish the common interrupt service routine (ISR) that
   // will be used for all declared switches
@@ -246,14 +99,13 @@ void setup() {
   FastLED.setBrightness(20);
 	
   Serial.println("Turn the button LEDs ON to half brightness");
-  analogWrite(ledPinR,128);
-  analogWrite(ledPinG,128);
-  analogWrite(ledPinB,128);
-  
+  button_led_set(128,128,128);
+
+  button_leds_flash(4);
 }
 
 void loop() {
-  
+
    // Any messages from the MP3 player?
   if (MP3.available()) {
     printDetail(MP3.readType(), MP3.read()); //Print the detail message from DFPlayer to handle different errors and states.
@@ -314,7 +166,7 @@ void loop() {
         sayColor(7,1); // White
         break;
         case 2: // rrggBB
-          color_to_use = CRGB::Red;
+          color_to_use = CRGB::White;
           Serial.println("Stove LEDs");
           xTaskCreate(
             leds_stove,    // Function that should be called
@@ -324,6 +176,7 @@ void loop() {
             1,               // Task priority
             NULL             // Task handle
           );
+          MP3.playFolder(99,6);
           break;
        case 20: // rrGGbb
           nextLang();
@@ -547,51 +400,3 @@ void pressHandler (BfButton *btn, BfButton::press_pattern_t pattern) {
 // }
 */
 
-void leds_oven( void * data ){
-  Serial.println("leds_oven function");
-  CRGB ledColor = *(CRGB *) data;
-  int ledBright = 0;
-  
-  for(ledBright=0;ledBright<=100;ledBright=ledBright+1){
-    //Serial.println(ledBright);
-    FastLED.setBrightness(ledBright);
-    fill_solid(oven_leds, OVEN_NUM_LEDS, ledColor);
-    FastLED.show();
-    delay(10);
-  }
-  
-  for(ledBright=100;ledBright>=0;ledBright=ledBright-1){
-    //Serial.println(ledBright);
-    FastLED.setBrightness(ledBright);
-    fill_solid(oven_leds, OVEN_NUM_LEDS, ledColor);
-    FastLED.show();
-    delay(10);
-  }
-  fill_solid(oven_leds, OVEN_NUM_LEDS, CRGB::Black);
-  vTaskDelete(NULL);
-}
-
-void leds_stove( void * data ){
-  Serial.println("leds_stove function");
-  CRGB ledColor = *(CRGB *) data;
-  int ledBright = 0;
-  
-  for(ledBright=0;ledBright<=255;ledBright=ledBright+1){
-    //Serial.println(ledBright);
-    FastLED.setBrightness(ledBright);
-    fill_solid(stove_leds, STOVE_NUM_LEDS, ledColor);
-    FastLED.show();
-    delay(10);
-  }
-  delay(10000);
-  
-  for(ledBright=255;ledBright>=0;ledBright=ledBright-1){
-    //Serial.println(ledBright);
-    FastLED.setBrightness(ledBright);
-    fill_solid(stove_leds, STOVE_NUM_LEDS, ledColor);
-    FastLED.show();
-    delay(10);
-  }
-  fill_solid(stove_leds, STOVE_NUM_LEDS, CRGB::Black);
-  vTaskDelete(NULL);
-}
