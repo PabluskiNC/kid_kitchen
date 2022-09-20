@@ -20,7 +20,8 @@ int sound_mode = 0;
 // 1 - sound effects
 // 2 -
 
-int playLang=1; // 1 Eng; 2 Spa
+int Lang=1; // 1 Eng; 2 Spa  ** must match folders in the SD card **
+#define MAX_LANGUAGES 2
 
 // ----------------------------------------------- \\
 
@@ -88,6 +89,65 @@ void leds_stove( void * data);
 CRGB oven_leds[OVEN_NUM_LEDS];
 CRGB stove_leds[STOVE_NUM_LEDS];
 
+int MP3_is_playing(){
+  int i = MP3.readState()==513;
+  //Serial.println(i==0);
+  return ( i == 0);
+}
+
+void sayColor(int c, int w){
+  CRGB color_to_use = CRGB::Black;
+  switch(c){
+    case 1:
+      color_to_use=CRGB::Red;
+      break;
+    case 2:
+      color_to_use=CRGB::Green;
+      break;
+    case 3:
+      color_to_use=CRGB::Blue;
+      break;
+    case 4:
+      color_to_use=CRGB::Yellow;
+      break;
+    case 5:
+      color_to_use=CRGB::Cyan;
+      break;
+    case 6:
+      color_to_use=CRGB::Magenta;
+      break;
+    case 7:
+      color_to_use=CRGB::White;
+      break;
+  }
+  Serial.print(F("Setting Oven LEDs to "));
+  Serial.println(c);
+  xTaskCreate(
+    leds_oven,    // Function that should be called
+    "Light up the oven LEDs",  // Name of the task (for debugging)
+    1000,            // Stack size (bytes)
+    (void *) &color_to_use,            // Parameter to pass
+    1,               // Task priority
+    NULL             // Task handle
+  );
+
+  MP3.playFolder(Lang,c);
+  if(w>0){
+    while(MP3_is_playing()){}; // wait until playing is done
+  }
+}
+
+void nextLang(){
+  Lang+=1;
+  if(Lang>MAX_LANGUAGES){
+    Lang=1;
+  }
+  Serial.print(F("Switching language to "));
+  Serial.println(Lang);
+  MP3.playFolder(97,Lang);
+  //while(MP3_is_playing()){};
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -99,6 +159,7 @@ void setup() {
 
   // Setup the MP3-TF-16p player
   Serial2.begin(9600, SERIAL_8N1);  //Serial2.begin(9600);
+
   Serial.println(F("Initializing MP3 ... (May take 3~5 seconds)"));
 
   if (!MP3.begin(Serial2)) {
@@ -224,43 +285,57 @@ void loop() {
     read_buttons = false;
     // play button sound
     
-    MP3.playFolder(98,8);
-    
-    while(MP3.readState()==513){};
+    MP3.playFolder(98,2);
+    while(MP3_is_playing()){};
+   // while(MP3.readState()==513){};
 
     // TODO: Act upon the button presses
     switch (sound_mode*1000+t[0]*100+t[1]*10+t[2]){
         case 1: // rgB
-        MP3.playFolder(playLang,3); // Blue
-        while(MP3.readState()==513){};
-        MP3.playFolder(98,6);
+        //Serial.println(F("Say: Blue"));
+        sayColor(3,1); // Blue
         break;
        case 10: // rGb
-        MP3.playFolder(playLang,2); // Green
+        sayColor(2,1); // Green
         break;
        case 11: // rGB
-        MP3.playFolder(playLang,5); // Cyan
+        sayColor(5,1); // Cyan
         break;
       case 100: // Rgb
-        MP3.playFolder(playLang,1); // Red
+        sayColor(1,1); // Red
         break;
       case 101: // RgB
-        MP3.playFolder(playLang,6); // Magenta
+        sayColor(6,1); // Magenta
         break;
       case 110: // RGb
-        MP3.playFolder(playLang,4); // Yellow
+        sayColor(4,1); // Yellow
         break;
       case 111: // RGB
-        MP3.playFolder(playLang,7); // White
+        sayColor(7,1); // White
         break;
         case 2: // rrggBB
+          color_to_use = CRGB::Red;
+          Serial.println("Stove LEDs");
+          xTaskCreate(
+            leds_stove,    // Function that should be called
+            "Light up the 2 LEDs",  // Name of the task (for debugging)
+            1000,            // Stack size (bytes)
+            (void *) &color_to_use,            // Parameter to pass
+            1,               // Task priority
+            NULL             // Task handle
+          );
+          break;
        case 20: // rrGGbb
+          nextLang();
+          break;
        case 22: // rrGGBB
       case 200: // RRggbb
       case 202: // RRggBB
       case 220: // RRGGbb
+        break;
       case 222: // RRGGBB 
         MP3.playFolder(99,10); // ants
+        //while(!MP3_is_playing()){};
         break;
        case 3: // rrrgggBBB
        case 30: // rrrGGGbbb
@@ -432,9 +507,9 @@ void pressHandler (BfButton *btn, BfButton::press_pattern_t pattern) {
       );
       break;
     case BfButton::DOUBLE_PRESS:
-      playLang = playLang + 1;
-      if(playLang > 2){
-        playLang = 1;
+      Lang = Lang + 1;
+      if(Lang > 2){
+        Lang = 1;
       }
       color_to_use = CRGB::Red;
       Serial.println(" double pressed.");
@@ -457,13 +532,13 @@ void pressHandler (BfButton *btn, BfButton::press_pattern_t pattern) {
   MP3.waitAvailable();
 
   Serial.print("Playing Lang: ");
-  Serial.print(playLang);
+  Serial.print(Lang);
   Serial.print(" File: ");
   Serial.println(soundToPlay);
   // Serial.print("Playing File ");
-  // Serial.println(soundToPlay+1+(playLang * 7 -7));
-  // MP3.play(soundToPlay+1+(playLang * 7 -7));
-  MP3.playFolder(playLang, soundToPlay);
+  // Serial.println(soundToPlay+1+(Lang * 7 -7));
+  // MP3.play(soundToPlay+1+(Lang * 7 -7));
+  MP3.playFolder(Lang, soundToPlay);
 }
 
 // void specialPressHandler (BfButton *btn, BfButton::press_pattern_t pattern) {
