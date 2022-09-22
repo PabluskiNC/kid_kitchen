@@ -10,10 +10,10 @@ const unsigned int ledPinG = 33;
 const unsigned int btnPinB = 14;
 const unsigned int ledPinB = 27;
 
-
 int     interrupt_pin =  23;  // external interrupt pin
 void IRAM_ATTR switch_ISR();
 
+TaskHandle_t ButtonTaskHandle = NULL;
 
 #define num_switches     3
 //
@@ -68,6 +68,8 @@ void button_led_functions(void * data){
     int BLFunction = *(int *) data;
     Serial.print(F("Button function: "));
     Serial.println(BLFunction);
+    int l=128;
+    int h=255;
     switch(BLFunction){
         case 0: // turn off LEDs
             button_led_set(0,0,0);
@@ -79,18 +81,39 @@ void button_led_functions(void * data){
             button_led_set(255,255,255);
             break;
         case 4:
-            int l=128;
-            int h=255;
             while(1){
                 button_led_set(h,l,l);
-                delay(250);
+                vTaskDelay(250);
                 button_led_set(l,h,l);
-                delay(250);
+                vTaskDelay(250);
                 button_led_set(l,l,h);
-                delay(250);
+                vTaskDelay(250);
+            }
+            break;
+        case 5:
+            while(1){
+                button_led_set(h,h,h);
+                vTaskDelay(250);
+                button_led_set(0,0,0);
+                vTaskDelay(250);
             }
             break;
     }
+}
+void fast_flash_button_leds(){
+    for(int i=10;i>0;i--){
+      Serial.println(i);
+      button_led_set(128,0,0);
+      delay(10+6*i);
+
+      button_led_set(0,128,0);
+      delay(10+6*i);
+
+      button_led_set(0,0,128);
+      delay(10+6*i);
+    }
+    button_led_set(0,0,0);
+    vTaskDelete(NULL);
 }
 
 void button_leds_flash( int BLFunction ){
@@ -102,6 +125,7 @@ void button_leds_flash( int BLFunction ){
         1000,            // Stack size (bytes)
         &BLFunction,            // Parameter to pass
         1,               // Task priority
-        NULL             // Task handle
+        &ButtonTaskHandle             // Task handle
     );
+
 }
