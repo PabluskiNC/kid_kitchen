@@ -12,12 +12,19 @@ int sound_mode = 0;
 int Lang=1; // 1 Eng; 2 Spa  ** must match folders in the SD card **
 #define MAX_LANGUAGES 2
 
+#define START_FOLDER 96
 #define LANG_FOLDER 97
+#define BTNS_FOLDER 98
+#define SNDS_FOLDER 99
 
 int MP3_is_playing(){
-  int i = MP3.readState()==513;
-  //Serial.println(i==0);
-  return ( i == 0);
+  int i = MP3.readState();
+  Serial.print(".");
+  return ( i == 513 );
+}
+
+int files_in_folder(int folder){
+  return(MP3.readFileCountsInFolder(folder));
 }
 
 void sayColor(int c, int w){
@@ -47,18 +54,30 @@ void sayColor(int c, int w){
   }
   Serial.print(F("Setting Oven LEDs to "));
   Serial.println(c);
+  
+  /*
+  // Kill the old task, if it is running
+  if(ovenTaskHandle != NULL) {
+    Serial.println(F("Killing oven task"));
+    vTaskDelete(ovenTaskHandle);
+  }
+  */
+  stove_leds_off();
   xTaskCreate(
-    leds_oven,    // Function that should be called
+    leds_oven,                 // Function that should be called
     "Light up the oven LEDs",  // Name of the task (for debugging)
-    1000,            // Stack size (bytes)
-    (void *) &color_to_use,            // Parameter to pass
-    1,               // Task priority
-    NULL             // Task handle
+    1000,                      // Stack size (bytes)
+    (void *) &color_to_use,    // Parameter to pass
+    1,                         // Task priority
+    &ovenTaskHandle            // Task handle
   );
-
+  
   MP3.playFolder(Lang,c);
+  //leds_oven(color_to_use);
   if(w>0){
-    while(MP3_is_playing()){}; // wait until playing is done
+    while(MP3_is_playing()){
+      Serial.println(F("Still playing"));
+    }; // wait until playing is done
   }
 }
 
