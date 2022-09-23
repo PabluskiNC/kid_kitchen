@@ -2,11 +2,17 @@
 IKEA DUKTIG re-brain
 
 Parts:
-ESP32-VROOM-32
-MP3-TF-16P
-Switches with built-in LEDs
-Speaker
+* ESP32-VROOM-32
+* MP3-TF-16P
+* Switches with built-in LEDs
+* Speaker
+* micro SD card
 
+Circuit diagram
+![Circuit diagram](docs/kid_kitchen_circuit-v1.png)
+
+Test breadboard
+![Test Breadboard](docs/kid-kitchen-test-board.png)
 
 The SD card should contain these files:
 
