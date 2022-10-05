@@ -6,6 +6,7 @@ and a couple of WS2812B strips to light up the stove top and
 the oven area.
 */
 
+#include "ota.h"
 #include "led_handling.h"
 #include "sound_handling.h"
 #include "button_handling.h"
@@ -15,33 +16,11 @@ the oven area.
 void setup() {
   Serial.begin(115200);
 
+  ota_wifi_setup();
+
   enable_button_leds();
   
-  // Setup the MP3-TF-16p player
-  Serial2.begin(9600, SERIAL_8N1);  //Serial2.begin(9600);
-
-  Serial.println(F("Initializing MP3 ... (May take 3~5 seconds)"));
-  MP3.begin(Serial2);
-  if (!MP3.begin(Serial2)) {
-    Serial.println(F("ERROR ... restart the ESP32")); 
-    fast_flash_button_leds();
-    ESP.restart();  // Have you tried turning it off and on again?
-  }
-  Serial.println(F("MP3 online."));
-
-  MP3.volume(30); // From 0 to 30)
-  MP3.setTimeOut(500); //Set serial communictaion time out 500ms
-  MP3.disableLoopAll();
-  MP3.EQ(DFPLAYER_EQ_NORMAL);
-  //  MP3.EQ(DFPLAYER_EQ_POP);
-  //  MP3.EQ(DFPLAYER_EQ_ROCK);
-  //  MP3.EQ(DFPLAYER_EQ_JAZZ);
-  //  MP3.EQ(DFPLAYER_EQ_CLASSIC);
-  //  MP3.EQ(DFPLAYER_EQ_BASS);
-
-  Serial.println(F("Play startup sound"));
-  MP3.playFolder(START_FOLDER,1); // bootup sound
-  while(MP3_is_playing());
+  mp3_setup();
   
   Serial.println(F("Enable ESP32 onboard LED for output"));
   pinMode(LED,OUTPUT);  // onboard LED 
@@ -98,6 +77,8 @@ void setup() {
 
 void loop() {
 
+  // check for WiFi OTA updates
+  ArduinoOTA.handle();
    // Any messages from the MP3 player?
   if (MP3.available()) {
     printDetail(MP3.readType(), MP3.read()); //Print the detail message from DFPlayer to handle different errors and states.
