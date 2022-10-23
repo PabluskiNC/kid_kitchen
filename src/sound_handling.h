@@ -1,4 +1,3 @@
-
 #include <DFRobotDFPlayerMini.h>
 
 // MP3 definitions 
@@ -16,6 +15,8 @@ int Lang=1; // 1 Eng; 2 Spa  ** must match folders in the SD card **
 #define LANG_FOLDER 97
 #define BTNS_FOLDER 98
 #define SNDS_FOLDER 99
+
+int MP3_is_playing();
 
 void mp3_setup(){
   // Setup the MP3-TF-16p player
@@ -48,11 +49,22 @@ void mp3_setup(){
 int MP3_is_playing(){
   int i = MP3.readState();
   Serial.print(".");
-  return ( i == 513 );
+  //Serial.print("readState: ");
+  //Serial.println(i);
+  return ( i != 0 );
 }
 
 int files_in_folder(int folder){
-  return(MP3.readFileCountsInFolder(folder));
+  //while(! MP3.available());
+  while(MP3_is_playing());
+  int fif = -1;
+  int cnt = 5;
+  while((fif * cnt) < 0){
+    fif=MP3.readFileCountsInFolder(folder);
+    cnt--;
+    delay(100);
+  }
+  return(fif);
 }
 
 void sayColor(int c, int w){

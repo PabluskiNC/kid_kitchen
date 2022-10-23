@@ -8,8 +8,8 @@ the oven area.
 
 #include "ota.h"
 #include "led_handling.h"
-#include "sound_handling.h"
 #include "button_handling.h"
+#include "sound_handling.h"
 
 #define LED 2  // Onboard LED fpr esp32-vroom-32 board
 
@@ -67,15 +67,17 @@ void setup() {
   //button_led_set(128,128,128);
 
   button_leds_flash(4);
+  /*
   int fif = files_in_folder(SNDS_FOLDER);
   Serial.print("Files in folder(");
   Serial.print(SNDS_FOLDER);
   Serial.print(") : ");
   Serial.println(fif);
-
+  */
 }
 
 void loop() {
+  //MP3_is_playing();
 
   // check for WiFi OTA updates
   ArduinoOTA.handle();
@@ -111,7 +113,9 @@ void loop() {
     // play button sound
     
     int fif=MP3.readFileCountsInFolder(BTNS_FOLDER);
-    int rn=random(1,fif);
+    int rn=random(1,fif+1);
+    while(MP3_is_playing());
+    Serial.printf("Files in folder: %i  Played: %i\n",fif,rn);
     MP3.playFolder(BTNS_FOLDER,rn);
     while(MP3_is_playing()){};
    // while(MP3.readState()==513){};
