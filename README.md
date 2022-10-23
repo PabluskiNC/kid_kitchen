@@ -1,10 +1,10 @@
-# kid.mp3  ## kitchen
+# kid_kitchen
 IKEA DUKTIG re-brain
 
-Create a wifi.mp3  ## secret.h file in the src directory - It should include:
+Create a wifi_secret.h file in the src directory - It should include:
 ```
-#define SECRET.mp3  ## SSID "your_ssid"
-#define SECRET.mp3  ## PASS "your_password"
+#define SECRET_SSID "your_ssid"
+#define SECRET_PASS "your_password"
 ```
 
 Change the IP address of your ESP32 in the platformio.ini file
@@ -18,7 +18,7 @@ Parts:
 * micro SD card
 
 Circuit diagram
-![Circuit diagram](docs/kid.mp3  ## kitchen_circuit-v1.png)
+![Circuit diagram](docs/kid_kitchen_circuit-v1.png)
 
 Test breadboard
 ![Test Breadboard](docs/kid-kitchen-test-board.png)
