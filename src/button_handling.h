@@ -1,3 +1,7 @@
+/*
+Deal with the three buttons
+*/
+
 #include <ez_switch_lib.h>
 
 // Button definitions
@@ -10,7 +14,7 @@ const unsigned int ledPinG = 33;
 const unsigned int btnPinB = 14;
 const unsigned int ledPinB = 27;
 
-int     interrupt_pin =  23;  // external interrupt pin
+int interrupt_pin =  23;  // external interrupt pin
 void IRAM_ATTR switch_ISR();
 
 TaskHandle_t ButtonTaskHandle = NULL;

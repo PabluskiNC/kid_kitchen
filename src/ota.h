@@ -1,18 +1,25 @@
+/*
+Allow for Over The Air (OTA) updates
+*/
+
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
-
-#include "wifi_secret.h" 
-const char* ssid = SECRET_SSID;
-const char* pass = SECRET_PASS;
-
 
 ///////please enter your sensitive data in the Secret tab/wifi_secret.h
 /////// Wifi Settings ///////
 //char ssid[] = SECRET_SSID;      // your network SSID (name)
 //char pass[] = SECRET_PASS;   // your network password
 
+#include "wifi_secret.h" 
+const char* ssid = SECRET_SSID;
+const char* pass = SECRET_PASS;
+
+void ota_print_ip(){
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+}
 
 void ota_wifi_setup() {
   //Serial.begin(115200);
@@ -66,14 +73,7 @@ void ota_wifi_setup() {
     });
 
   ArduinoOTA.begin();
-
   Serial.println("Ready");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-}
+  ota_print_ip();
 
-/*
-void loop() {
-  ArduinoOTA.handle();
 }
-*/

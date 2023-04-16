@@ -13,14 +13,16 @@ the oven area.
 
 #define LED 2  // Onboard LED fpr esp32-vroom-32 board
 
+int fif;
+int rn;
+
 void setup() {
   Serial.begin(115200);
 
+  Serial.println("Setting up WiFi");
   ota_wifi_setup();
 
   enable_button_leds();
-  
-  mp3_setup();
   
   Serial.println(F("Enable ESP32 onboard LED for output"));
   pinMode(LED,OUTPUT);  // onboard LED 
@@ -41,6 +43,10 @@ void setup() {
   }
   // Now establish the common interrupt service routine (ISR) that
   // will be used for all declared switches
+  
+  Serial.println("Configuring MP3 player");
+  mp3_setup();
+
   Serial.println(F("Setting up GPIO interrupt"));
   attachInterrupt(
     digitalPinToInterrupt(interrupt_pin),
@@ -74,6 +80,7 @@ void setup() {
   Serial.print(") : ");
   Serial.println(fif);
   */
+  ota_print_ip();
 }
 
 void loop() {
@@ -89,11 +96,12 @@ void loop() {
 // If timer is not yet running and GPIO interrupt happened then start timer
   if(timer_start_flag && ! timer_running_flag){
     if( !timerStarted(My_timer) ){
-      //Serial.println(F("Start Timer"));
+      Serial.println(F("Start Timer"));
       digitalWrite(LED,1);
-      timerStop(My_timer);
-      timerAttachInterrupt(My_timer, &onTimer, false);
-      timerAlarmDisable(My_timer);
+      //timerStop(My_timer);
+      //timerDetachInterrupt(My_timer);
+      //timerAttachInterrupt(My_timer, &onTimer, false);
+      //timerAlarmDisable(My_timer);
       timerAlarmWrite(My_timer, timer_length, true);
       timerAlarmEnable(My_timer); 
       timerStart(My_timer);
@@ -110,28 +118,27 @@ void loop() {
     Serial.printf("T1:%i T2:%i T3:%i\n",t[0],t[1],t[2]);
     Serial.flush();
     read_buttons = false;
-    // play button sound
     
-    int fif=MP3.readFileCountsInFolder(BTNS_FOLDER);
-    int rn=random(1,fif+1);
-    while(MP3_is_playing());
+    // play random button sound from button sound folder
+    fif=files_in_folder(BTNS_FOLDER);
+    rn=random(1,fif+1);
+    while(MP3_is_playing());  // wait until previous sound is done
+
     Serial.printf("Files in folder: %i  Played: %i\n",fif,rn);
     MP3.playFolder(BTNS_FOLDER,rn);
     while(MP3_is_playing()){};
-   // while(MP3.readState()==513){};
 
-    // TODO: Act upon the button presses
+    // Act upon the button presses - single, double, tripple
+    Serial.print("value for case: ");
+    Serial.println(sound_mode*1000+t[0]*100+t[1]*10+t[2]);
     switch (sound_mode*1000+t[0]*100+t[1]*10+t[2]){
-        case 1: // rgB
-        //Serial.println(F("Say: Blue"));
-        //CRGB c2u = CRGB::Blue;
-        //leds_oven((void *) * c2u);
+      case 1: // rgB
         sayColor(3,1); // Blue
         break;
-       case 10: // rGb
+      case 10: // rGb
         sayColor(2,1); // Green
         break;
-       case 11: // rGB
+      case 11: // rGB
         sayColor(5,1); // Cyan
         break;
       case 100: // Rgb
@@ -147,44 +154,54 @@ void loop() {
         sayColor(7,1); // White
         break;
       case 2: // rrggBB
-        color_to_use = CRGB::White;
+        fif=files_in_folder(SNDS2_FOLDER);
+        rn=random(1,fif+1);
+        while(MP3_is_playing());  // wait until previous sound is done
+
+        Serial.printf("Files in folder: %i  Played: %i\n",fif,rn);        color_to_use = CRGB::White;
         Serial.println("Stove LEDs");
-        // Kill the old task, if it is running
-        /*
-        if(stoveTaskHandle != NULL) {
-          Serial.println(F("Killing stove task"));
-          vTaskDelete(stoveTaskHandle);
-        }
-        */
+        MP3.playFolder(SNDS2_FOLDER,rn);  // cooking
+
+        stove_color_to_use = CRGB::White;
         stove_leds_off();
+        oven_leds_off();
+
         xTaskCreate(
           leds_stove,             // Function that should be called
           "Light up the 2 LEDs",  // Name of the task (for debugging)
           1000,                   // Stack size (bytes)
-          (void *) &color_to_use, // Parameter to pass
+          (void *) &stove_color_to_use, // Parameter to pass
           1,                      // Task priority
           &stoveTaskHandle        // Task handle
         );
         
-        //leds_stove(color_to_use);
-        MP3.playFolder(SNDS_FOLDER,6);  // cooking
+        color_to_use = CRGB::Red;
+        xTaskCreate(
+          leds_oven,             // Function that should be called
+          "Light up the oven LEDs",  // Name of the task (for debugging)
+          1000,                   // Stack size (bytes)
+          (void *) &color_to_use, // Parameter to pass
+          1,                      // Task priority
+          &ovenTaskHandle        // Task handle
+        );
+
+        while(MP3_is_playing());  // wait until previous sound is done
         break;
-       case 20: // rrGGbb
+      case 20: // rrGGbb
           nextLang();
           break;
-       case 22: // rrGGBB
+      case 22: // rrGGBB
+          break;
       case 200: // RRggbb
-      case 202: // RRggBB
-      case 220: // RRGGbb
+        // play random button sound from SOUND sound folder
+        fif=files_in_folder(SNDS1_FOLDER);
+        rn=random(1,fif+1);
+        while(MP3_is_playing());  // wait until previous sound is done
+
+        Serial.printf("Files in folder: %i  Played: %i\n",fif,rn);
+        MP3.playFolder(SNDS1_FOLDER,rn);
         color_to_use = CRGB::Magenta;
         Serial.println("Oven LEDs");
-        // Kill the old task, if it is running
-        /*
-        if(ovenTaskHandle != NULL) {
-          Serial.println(F("Killing oven task"));
-          vTaskDelete(ovenTaskHandle);
-        }
-        */
         oven_leds_off();
         xTaskCreate(
           leds_oven,             // Function that should be called
@@ -194,19 +211,24 @@ void loop() {
           1,                      // Task priority
           &ovenTaskHandle        // Task handle
         );
-        MP3.playFolder(SNDS_FOLDER,9);  // motor
+        while(MP3_is_playing()){};
         break;
+      case 202: // RRggBB
+      case 220: // RRGGbb
       case 222: // RRGGBB 
-        MP3.playFolder(SNDS_FOLDER,10); // ants
-                      color_to_use = CRGB::Red;
+        // play random button sound from SONGS sound folder
+        fif=files_in_folder(SONGS_FOLDER);
+        rn=random(1,fif+1);
+        while(MP3_is_playing());  // wait until previous sound is done
+
+        Serial.printf("Files in folder: %i  Played: %i\n",fif,rn);
+        MP3.playFolder(SONGS_FOLDER,rn);
+        while(MP3_is_playing()){};
+
+        MP3.playFolder(SONGS_FOLDER,rn); 
+
+        color_to_use = CRGB::Red;
         Serial.println("Oven LEDs");
-        // Kill the old task, if it is running
-        /*
-        if(ovenTaskHandle != NULL) {
-          Serial.println(F("Killing oven task"));
-          vTaskDelete(ovenTaskHandle);
-        }
-        */
         oven_leds_off();
         xTaskCreate(
           leds_oven,             // Function that should be called
@@ -216,11 +238,11 @@ void loop() {
           1,                      // Task priority
           &ovenTaskHandle        // Task handle
         );
-        //while(!MP3_is_playing()){};
+        while(!MP3_is_playing()){};
         break;
-       case 3: // rrrgggBBB
-       case 30: // rrrGGGbbb
-       case 33: // rrrGGGBBB
+      case   3: // rrrgggBBB
+      case  30: // rrrGGGbbb
+      case  33: // rrrGGGBBB
       case 300: // RRRgggbbb
       case 303: // RRRgggBBB
       case 330: // RRRGGGbbb
@@ -276,7 +298,7 @@ void IRAM_ATTR onTimer(){
   digitalWrite(LED,0);
 
   timerStop(My_timer);
-  timerDetachInterrupt(My_timer);
+  //timerDetachInterrupt(My_timer);
   
   for(int i=0;i<3;i++){
     t[i] = s[i];
@@ -427,4 +449,3 @@ void pressHandler (BfButton *btn, BfButton::press_pattern_t pattern) {
 //   Serial.println(" is special!!");
 // }
 */
-

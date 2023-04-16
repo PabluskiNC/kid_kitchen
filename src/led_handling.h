@@ -1,10 +1,13 @@
-/* Handle the kid_kitchen led functions
+/* 
+Handle the kid_kitchen led functions
 */
+
 #define FASTLED_INTERNAL
 #include <FastLED.h>
 
 // LED Strip config
 CRGB color_to_use = CRGB::Black;
+CRGB stove_color_to_use = CRGB::Black;
 
 //void leds_oven( void * data);
 //void leds_stove( void * data);
@@ -43,14 +46,14 @@ void all_led_strips_off(){
   FastLED.show();
 }
 
-void setup_led_strips(){
-    // Setup the WS2812B leds
+void setup_led_strips(){   // Setup the WS2812B leds
   Serial.println(F("Setup the WS2812B strips"));
 	FastLED.addLeds<WS2812B, OVEN_DATA_PIN,  GRB>(oven_leds,  OVEN_NUM_LEDS);
   FastLED.addLeds<WS2812B, STOVE_DATA_PIN, GRB>(stove_leds, STOVE_NUM_LEDS);
   FastLED.setBrightness(20);
   all_led_strips_off();
 }
+
 void leds_oven( void * data ){
   Serial.println("leds_oven function");
   CRGB ledColor = *(CRGB *) data;
@@ -62,7 +65,6 @@ void leds_oven( void * data ){
     fill_solid(oven_leds, OVEN_NUM_LEDS, ledColor);
     FastLED.show();
     vTaskDelay(10);
-    //delay(10);
   }
   
   for(ledBright=254;ledBright>=0;ledBright=ledBright-2){
@@ -71,12 +73,12 @@ void leds_oven( void * data ){
     fill_solid(oven_leds, OVEN_NUM_LEDS, ledColor);
     FastLED.show();
     vTaskDelay(10);
-    //delay(10);
   }
+
   fill_solid(oven_leds, OVEN_NUM_LEDS, CRGB::Black);
   FastLED.show();
   vTaskDelete(NULL);
-  Serial.println(F("leds_oven function done"));
+  Serial.println("leds_oven function done");
 }
 
 void leds_stove( void * data ){
@@ -90,10 +92,8 @@ void leds_stove( void * data ){
     fill_solid(stove_leds, STOVE_NUM_LEDS, ledColor);
     FastLED.show();
     vTaskDelay(10);
-    //delay(10);
   }
   vTaskDelay(10000);
-  //delay(1000);
   
   for(ledBright=255;ledBright>=0;ledBright=ledBright-1){
     //Serial.println(ledBright);
@@ -101,11 +101,10 @@ void leds_stove( void * data ){
     fill_solid(stove_leds, STOVE_NUM_LEDS, ledColor);
     FastLED.show();
     vTaskDelay(10);
-    //delay(10);
   }
+
   fill_solid(stove_leds, STOVE_NUM_LEDS, BLACK);
   FastLED.show();
   vTaskDelete(NULL);
-  Serial.println(F("leds_stove function done"));
+  Serial.println("leds_stove function done");
 }
-

@@ -1,3 +1,7 @@
+/*
+Sound playing functions
+*/
+
 #include <DFRobotDFPlayerMini.h>
 
 // MP3 definitions 
@@ -11,14 +15,17 @@ int sound_mode = 0;
 int Lang=1; // 1 Eng; 2 Spa  ** must match folders in the SD card **
 #define MAX_LANGUAGES 2
 
-#define START_FOLDER 96
-#define LANG_FOLDER 97
-#define BTNS_FOLDER 98
-#define SNDS_FOLDER 99
+#define SONGS_FOLDER 85
+#define START_FOLDER 86
+#define LANG_FOLDER  03
+#define BTNS_FOLDER  88 
+#define SNDS1_FOLDER 81
+#define SNDS2_FOLDER 82
 
 int MP3_is_playing();
 
 void mp3_setup(){
+  delay(1000);
   // Setup the MP3-TF-16p player
   Serial2.begin(9600, SERIAL_8N1);  //Serial2.begin(9600);
 
@@ -29,10 +36,11 @@ void mp3_setup(){
     fast_flash_button_leds();
     ESP.restart();  // Have you tried turning it off and on again?
   }
+
   Serial.println(F("MP3 online."));
 
   MP3.volume(30); // From 0 to 30)
-  MP3.setTimeOut(500); //Set serial communictaion time out 500ms
+  MP3.setTimeOut(500); //Set serial communication time out 500ms
   MP3.disableLoopAll();
   MP3.EQ(DFPLAYER_EQ_NORMAL);
   //  MP3.EQ(DFPLAYER_EQ_POP);
@@ -42,8 +50,16 @@ void mp3_setup(){
   //  MP3.EQ(DFPLAYER_EQ_BASS);
 
   Serial.println(F("Play startup sound"));
-  MP3.playFolder(START_FOLDER,1); // bootup sound
-  while(MP3_is_playing());
+  //MP3.playFolder(START_FOLDER,1); // bootup sound
+  //while(MP3_is_playing());
+  // play random button sound from SONGS sound folder
+  int fif=MP3.readFileCountsInFolder(START_FOLDER);
+  int rn=random(1,fif+1);
+  while(MP3_is_playing());  // wait until previous sound is done
+
+  Serial.printf("Files in folder: %i  Played: %i\n",fif,rn);
+  MP3.playFolder(START_FOLDER,rn);
+  while(MP3_is_playing()){};
 }
 
 int MP3_is_playing(){
@@ -51,7 +67,7 @@ int MP3_is_playing(){
   Serial.print(".");
   //Serial.print("readState: ");
   //Serial.println(i);
-  return ( i != 0 );
+  return ( i != 0 && i != 512 );
 }
 
 int files_in_folder(int folder){
@@ -61,6 +77,9 @@ int files_in_folder(int folder){
   int cnt = 5;
   while((fif * cnt) < 0){
     fif=MP3.readFileCountsInFolder(folder);
+    if(fif==512){
+      fif=-1;
+    };
     cnt--;
     delay(100);
   }
